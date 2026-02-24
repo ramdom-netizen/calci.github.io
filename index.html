@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculator</title>
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background:#0f172a;
+  color:white;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  margin:0;
+}
+.container{
+  width:320px;
+  background:#111827;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 0 20px rgba(0,0,0,0.5);
+}
+#display{
+  width:100%;
+  height:60px;
+  font-size:24px;
+  text-align:right;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  margin-bottom:10px;
+}
+.buttons{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+}
+button{
+  padding:15px;
+  font-size:18px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#1f2937;
+  color:white;
+}
+button:hover{background:#374151}
+.equal{background:#22c55e;color:black}
+.operator{background:#3b82f6}
+.admin-btn{
+  margin-top:10px;
+  width:100%;
+  background:#f59e0b;
+  color:black;
+}
+#adminPanel{
+  display:none;
+  margin-top:15px;
+  background:#020617;
+  padding:10px;
+  border-radius:8px;
+  max-height:200px;
+  overflow:auto;
+}
+.entry{
+  border-bottom:1px solid #333;
+  padding:6px 0;
+  font-size:14px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <input id="display" disabled>
+
+  <div class="buttons">
+    <button onclick="add('7')">7</button>
+    <button onclick="add('8')">8</button>
+    <button onclick="add('9')">9</button>
+    <button class="operator" onclick="add('/')">÷</button>
+
+    <button onclick="add('4')">4</button>
+    <button onclick="add('5')">5</button>
+    <button onclick="add('6')">6</button>
+    <button class="operator" onclick="add('*')">×</button>
+
+    <button onclick="add('1')">1</button>
+    <button onclick="add('2')">2</button>
+    <button onclick="add('3')">3</button>
+    <button class="operator" onclick="add('-')">−</button>
+
+    <button onclick="add('0')">0</button>
+    <button onclick="add('.')">.</button>
+    <button class="equal" onclick="calculate()">=</button>
+    <button class="operator" onclick="add('+')">+</button>
+
+    <button onclick="clearDisplay()">C</button>
+    <button onclick="backspace()">⌫</button>
+    <button class="admin-btn" onclick="adminLogin()">Admin</button>
+  </div>
+
+  <div id="adminPanel"></div>
+</div>
+
+<script>
+const SCRIPT_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
+
+let display = document.getElementById("display");
+let adminPanel = document.getElementById("adminPanel");
+
+// calculator
+function add(value){
+  display.value += value;
+}
+function clearDisplay(){
+  display.value = "";
+}
+function backspace(){
+  display.value = display.value.slice(0,-1);
+}
+
+function calculate(){
+  if(display.value==="") return;
+  try{
+    let result = eval(display.value);
+    logActivity(display.value, result);
+    display.value = result;
+  }catch{
+    alert("Invalid expression");
+  }
+}
+
+// send to Google Sheet
+async function logActivity(expr, result){
+  if(!SCRIPT_URL.includes("http")) return;
+
+  const data = {
+    expression: expr,
+    result: result,
+    userAgent: navigator.userAgent,
+    timestamp: new Date().toISOString()
+  };
+
+  await fetch(SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify(data)
+  });
+}
+
+// ADMIN LOGIN
+function adminLogin(){
+  let pass = prompt("Enter admin password:");
+  if(pass === null) return;
+
+  if(localStorage.getItem("adminPass") === null){
+    localStorage.setItem("adminPass", pass);
+    alert("Password set!");
+  }
+  else if(pass !== localStorage.getItem("adminPass")){
+    alert("Wrong password");
+    return;
+  }
+
+  loadAdminData();
+  adminPanel.style.display="block";
+}
+
+// fetch activity
+async function loadAdminData(){
+  adminPanel.innerHTML="Loading...";
+  const res = await fetch(SCRIPT_URL);
+  const data = await res.json();
+
+  adminPanel.innerHTML="";
+
+  data.slice(1).reverse().forEach(row=>{
+    let div=document.createElement("div");
+    div.className="entry";
+    div.innerHTML = `
+      <b>${row[0]}</b> = ${row[1]}<br>
+      <small>${new Date(row[3]).toLocaleString()}</small>
+    `;
+    adminPanel.appendChild(div);
+  });
+}
+</script>
+
+</body>
+</html>
